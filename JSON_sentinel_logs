@@ -1,0 +1,133 @@
+#genrator for JSON log file for azure
+
+import json
+import random
+from datetime import datetime, timedelta
+from faker import Faker
+
+fake = Faker()
+
+TOTAL_EVENTS = 100000
+ATTACK_PERCENTAGE = 0.02
+
+departments = {
+    "Cloud": ["cloudadmin1", "cloudadmin2", "devops1"],
+    "Security": ["soc1", "soc2", "securityadmin"],
+    "Finance": ["finance1", "finance2"],
+    "HR": ["hr1", "hr2"],
+    "IT": ["itadmin", "helpdesk1", "helpdesk2"],
+    "Developers": ["dev1", "dev2", "dev3", "dev4"]
+}
+
+resources = [
+    "VM-Prod-01",
+    "VM-Prod-02",
+    "VM-Test-01",
+    "Storage-Prod",
+    "Storage-Backup",
+    "KeyVault-01",
+    "AKS-Cluster",
+    "NSG-Web",
+    "NSG-DB",
+    "AppService-Portal",
+    "SQL-Prod",
+    "VNET-Prod"
+]
+
+normal_operations = [
+    "MICROSOFT.COMPUTE/VIRTUALMACHINES/START/ACTION",
+    "MICROSOFT.COMPUTE/VIRTUALMACHINES/RESTART/ACTION",
+    "MICROSOFT.STORAGE/STORAGEACCOUNTS/WRITE",
+    "MICROSOFT.KEYVAULT/VAULTS/READ",
+    "MICROSOFT.RESOURCES/DEPLOYMENTS/WRITE",
+    "MICROSOFT.INSIGHTS/DIAGNOSTICSETTINGS/WRITE",
+    "MICROSOFT.NETWORK/NETWORKSECURITYGROUPS/WRITE",
+    "MICROSOFT.AUTHORIZATION/ROLEASSIGNMENTS/WRITE"
+]
+
+attack_operations = [
+    ("MICROSOFT.COMPUTE/VIRTUALMACHINES/DELETE", "T1485"),
+    ("MICROSOFT.KEYVAULT/VAULTS/DELETE", "T1485"),
+    ("MICROSOFT.AUTHORIZATION/ROLEASSIGNMENTS/DELETE", "T1098"),
+    ("MICROSOFT.NETWORK/NETWORKSECURITYGROUPS/DELETE", "T1562"),
+    ("MICROSOFT.STORAGE/STORAGEACCOUNTS/LISTKEYS/ACTION", "T1528")
+]
+
+office_countries = [
+    "India",
+    "United Kingdom",
+    "Germany",
+    "United States",
+    "Singapore"
+]
+
+attack_countries = [
+    "Russia",
+    "China",
+    "Iran",
+    "North Korea"
+]
+
+office_ips = [
+    "20.40.10.",
+    "40.80.22.",
+    "52.140.10."
+]
+
+malicious_ips = [
+    "185.220.101.",
+    "91.219.236.",
+    "45.95.147."
+]
+
+start = datetime.utcnow() - timedelta(days=30)
+
+output_file = "AzureActivity.json"
+
+with open(output_file, "w") as f:
+
+    current = start
+
+    for _ in range(TOTAL_EVENTS):
+
+        current += timedelta(seconds=random.randint(20, 180))
+
+        attack = random.random() < ATTACK_PERCENTAGE
+
+        if attack:
+            dept = "External"
+            user = fake.user_name() + "@evil.com"
+            operation, mitre = random.choice(attack_operations)
+            country = random.choice(attack_countries)
+            ip = random.choice(malicious_ips) + str(random.randint(1, 254))
+            severity = "High"
+            status = random.choice(["Succeeded", "Failed"])
+        else:
+            dept = random.choice(list(departments.keys()))
+            user = random.choice(departments[dept]) + "@company.com"
+            operation = random.choice(normal_operations)
+            mitre = ""
+            country = random.choice(office_countries)
+            ip = random.choice(office_ips) + str(random.randint(1, 254))
+            severity = random.choice(["Informational", "Low", "Medium"])
+            status = "Succeeded"
+
+        log = {
+            "TimeGenerated": current.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "Department": dept,
+            "User": user,
+            "IPAddress": ip,
+            "Country": country,
+            "Resource": random.choice(resources),
+            "Operation": operation,
+            "Status": status,
+            "Severity": severity,
+            "Attack": attack,
+            "MITRE": mitre
+        }
+
+        # Write one JSON object per line (NDJSON)
+        f.write(json.dumps(log) + "\n")
+
+print(f"Generated {TOTAL_EVENTS:,} events.")
+print(f"Saved to {output_file}")
